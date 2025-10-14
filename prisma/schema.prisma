@@ -1,0 +1,57 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid()) @db.Uuid
+  username  String   @unique @db.VarChar(100)
+  password  String   @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  @@map("users")
+}
+
+model Integration {
+  id          String        @id @default(uuid()) @db.Uuid
+  name        String        @db.VarChar(255)
+  description String?       @db.Text
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz()
+  endpoints   ApiEndpoint[]
+
+  @@map("integrations")
+}
+
+model ApiEndpoint {
+  id                 String         @id @default(uuid()) @db.Uuid
+  integrationId      String         @map("integration_id") @db.Uuid
+  name               String         @db.VarChar(255)
+  httpMethod         String         @map("http_method") @db.VarChar(10)
+  url                String         @db.Text
+  headersTemplate    Json?          @map("headers_template") @db.JsonB
+  authenticationType String         @default("None") @map("authentication_type") @db.VarChar(50)
+  createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamptz()
+  integration        Integration    @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  fieldMappings      FieldMapping[]
+
+  @@map("api_endpoints")
+}
+
+model FieldMapping {
+  id         String      @id @default(uuid()) @db.Uuid
+  endpointId String      @map("endpoint_id") @db.Uuid
+  direction  String      @db.VarChar(10) // 'request' ou 'response'
+  sourcePath String      @map("source_path") @db.Text
+  targetPath String      @map("target_path") @db.Text
+  createdAt  DateTime    @default(now()) @map("created_at") @db.Timestamptz()
+  endpoint   ApiEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  @@map("field_mappings")
+}
