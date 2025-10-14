@@ -39,6 +39,10 @@ model ApiEndpoint {
   authenticationType String         @default("None") @map("authentication_type") @db.VarChar(50)
   createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamptz()
   integration        Integration    @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  requestType        String         @default("REST") @map("request_type") @db.VarChar(10) // 'REST' ou 'SOAP'
+  bodyTemplate       String?        @map("body_template") @db.Text  // Template do corpo (JSON ou XML/SOAP)
+  
   fieldMappings      FieldMapping[]
 
   @@map("api_endpoints")
