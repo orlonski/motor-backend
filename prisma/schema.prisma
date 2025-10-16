@@ -1,5 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// Schema Prisma MELHORADO
+// Mudanças marcadas com // 🆕 NOVO ou // ✏️ MODIFICADO
 
 generator client {
   provider = "prisma-client-js"
@@ -40,10 +40,20 @@ model ApiEndpoint {
   createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamptz()
   integration        Integration    @relation(fields: [integrationId], references: [id], onDelete: Cascade)
 
-  requestType        String         @default("REST") @map("request_type") @db.VarChar(10) // 'REST' ou 'SOAP'
-  bodyTemplate       String?        @map("body_template") @db.Text  // Template do corpo (JSON ou XML/SOAP)
+  requestType        String         @default("REST") @map("request_type") @db.VarChar(10)
+  bodyTemplate       String?        @map("body_template") @db.Text
+  
+  // 🆕 NOVOS CAMPOS: Exemplos de estrutura para validação
+  requestExample     Json?          @map("request_example") @db.JsonB  // Exemplo do payload de request
+  responseExample    Json?          @map("response_example") @db.JsonB // Exemplo do payload de response
+  
+  // 🆕 NOVO: Metadados de detecção automática
+  detectedScenario   String?        @map("detected_scenario") @db.VarChar(50) // 'simple_object', 'array_root', 'object_with_arrays'
+  lastTestedAt       DateTime?      @map("last_tested_at") @db.Timestamptz() // Última vez que testou a API
   
   fieldMappings      FieldMapping[]
+  // 🆕 NOVA RELAÇÃO
+  validationErrors   ValidationError[]
 
   @@map("api_endpoints")
 }
@@ -55,7 +65,30 @@ model FieldMapping {
   sourcePath String      @map("source_path") @db.Text
   targetPath String      @map("target_path") @db.Text
   createdAt  DateTime    @default(now()) @map("created_at") @db.Timestamptz()
+  
+  // 🆕 NOVOS CAMPOS: Validação e metadados
+  isValid    Boolean     @default(true) @map("is_valid") @db.Boolean // Se o mapping está válido
+  validatedAt DateTime?  @map("validated_at") @db.Timestamptz() // Última validação
+  
   endpoint   ApiEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
 
   @@map("field_mappings")
+}
+
+// 🆕 NOVA TABELA: Histórico de erros de validação
+model ValidationError {
+  id          String      @id @default(uuid()) @db.Uuid
+  endpointId  String      @map("endpoint_id") @db.Uuid
+  errorType   String      @map("error_type") @db.VarChar(100) // 'MULTIPLE_ROOT_ARRAYS', 'INVALID_PATH', etc
+  errorMessage String     @map("error_message") @db.Text
+  suggestion  String?     @db.Text // Sugestão de correção
+  sourcePath  String?     @map("source_path") @db.Text // Path que causou o erro
+  targetPath  String?     @map("target_path") @db.Text
+  severity    String      @db.VarChar(20) // 'error', 'warning', 'info'
+  resolved    Boolean     @default(false) @db.Boolean // Se o erro foi corrigido
+  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz()
+  
+  endpoint    ApiEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  @@map("validation_errors")
 }

@@ -156,3 +156,123 @@ export const deleteEndpoint = async (req, res, next) => {
     next(error);
   }
 };
+
+// Testar endpoint e salvar exemplo de resposta
+export const testEndpoint = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Buscar configuração do endpoint
+    const endpoint = await prisma.apiEndpoint.findUnique({
+      where: { id },
+    });
+
+    if (!endpoint) {
+      return res.status(404).json({ error: 'Endpoint não encontrado' });
+    }
+
+    // Preparar headers
+    const headers = {
+      ...(endpoint.headersTemplate || {}),
+    };
+
+    // Preparar body (se necessário)
+    let body = null;
+    if (['POST', 'PUT', 'PATCH'].includes(endpoint.httpMethod)) {
+      body = endpoint.bodyTemplate || '';
+    }
+
+    // Fazer requisição para a API externa
+    const fetchOptions = {
+      method: endpoint.httpMethod,
+      headers,
+    };
+
+    if (body) {
+      fetchOptions.body = body;
+    }
+
+    let responseData;
+    let responseStatus;
+    let responseHeaders;
+    let contentType = '';
+
+    try {
+      const response = await fetch(endpoint.url, fetchOptions);
+      responseStatus = response.status;
+      responseHeaders = Object.fromEntries(response.headers.entries());
+      contentType = response.headers.get('content-type') || '';
+
+      // Tentar fazer parse baseado no Content-Type
+      if (contentType.includes('application/json')) {
+        responseData = await response.json();
+      } else if (contentType.includes('xml') || contentType.includes('soap')) {
+        // Para XML/SOAP, retornar como texto
+        const xmlText = await response.text();
+        
+        // Tentar parsear XML para JSON usando um parser simples
+        // Isso é opcional - você pode salvar o XML puro ou parseado
+        try {
+          // Usar o parser XML do n8n (mesmo que você está usando)
+          const parseString = (await import('xml2js')).parseString;
+          const parsedXml = await new Promise((resolve, reject) => {
+            parseString(xmlText, (err, result) => {
+              if (err) reject(err);
+              else resolve(result);
+            });
+          });
+          responseData = parsedXml;
+        } catch (xmlParseError) {
+          // Se falhar o parse, usa o XML como string
+          responseData = xmlText;
+        }
+      } else {
+        responseData = await response.text();
+      }
+    } catch (fetchError) {
+      return res.status(500).json({
+        error: 'Erro ao fazer requisição para a API externa',
+        details: fetchError.message,
+      });
+    }
+
+    // Salvar exemplo de resposta no banco (sucesso 2xx)
+    console.log('🔍 DEBUG - Salvando exemplo:');
+    console.log('  Status:', responseStatus);
+    console.log('  Content-Type:', contentType);
+    console.log('  Tipo de dados:', typeof responseData);
+    
+    let savedExample = false;
+    
+    if (responseStatus >= 200 && responseStatus < 300) {
+      console.log('  ✓ Status 2xx - Tentando salvar...');
+      try {
+        await prisma.apiEndpoint.update({
+          where: { id },
+          data: {
+            responseExample: responseData,
+            lastTestedAt: new Date(),
+          },
+        });
+        console.log('  ✓ Salvo com sucesso!');
+        savedExample = true;
+      } catch (saveError) {
+        console.error('  ✗ Erro ao salvar:', saveError.message);
+      }
+    } else {
+      console.log('  ✗ Não salvou - Status não é 2xx');
+    }
+
+    // Retornar resultado do teste
+    res.json({
+      success: responseStatus >= 200 && responseStatus < 300,
+      status: responseStatus,
+      contentType,
+      headers: responseHeaders,
+      data: responseData,
+      savedExample,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

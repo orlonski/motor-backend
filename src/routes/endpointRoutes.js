@@ -6,6 +6,7 @@ import {
   createEndpoint,
   updateEndpoint,
   deleteEndpoint,
+  testEndpoint,
 } from '../controllers/endpointController.js';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validator.js';
@@ -17,6 +18,9 @@ router.use(authenticate);
 
 // GET /api/integrations/:integrationId/endpoints - Listar endpoints de uma integração
 router.get('/:integrationId/endpoints', getEndpointsByIntegration);
+
+// POST /api/endpoints/:id/test - Testar endpoint
+router.post('/:id/test', testEndpoint);
 
 // GET /api/endpoints/:id - Buscar endpoint específico
 router.get('/:id', getEndpointById);
