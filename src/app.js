@@ -6,6 +6,7 @@ import integrationRoutes from './routes/integrationRoutes.js';
 import endpointRoutes from './routes/endpointRoutes.js';
 import mappingRoutes from './routes/mappingRoutes.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import structureRoutes from './routes/structureRoutes.js';
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.use('/api/endpoints', endpointRoutes);
 app.use('/api/integrations', endpointRoutes); // Para rota /api/integrations/:integrationId/endpoints
 app.use('/api/mappings', mappingRoutes);
 app.use('/api/endpoints', mappingRoutes); // Para rota /api/endpoints/:endpointId/mappings
+app.use('/api/endpoints', structureRoutes);
 
 // Rota 404
 app.use((req, res) => {

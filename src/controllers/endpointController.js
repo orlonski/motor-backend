@@ -207,22 +207,30 @@ export const testEndpoint = async (req, res, next) => {
       if (contentType.includes('application/json')) {
         responseData = await response.json();
       } else if (contentType.includes('xml') || contentType.includes('soap')) {
-        // Para XML/SOAP, retornar como texto
+        // Para XML/SOAP, parsear PRESERVANDO namespaces
         const xmlText = await response.text();
         
-        // Tentar parsear XML para JSON usando um parser simples
-        // Isso é opcional - você pode salvar o XML puro ou parseado
         try {
-          // Usar o parser XML do n8n (mesmo que você está usando)
-          const parseString = (await import('xml2js')).parseString;
-          const parsedXml = await new Promise((resolve, reject) => {
-            parseString(xmlText, (err, result) => {
-              if (err) reject(err);
-              else resolve(result);
-            });
+          // Importar xml2js dinamicamente
+          const xml2js = await import('xml2js');
+          
+          // IMPORTANTE: Configuração para PRESERVAR namespaces
+          const parser = new xml2js.Parser({
+            explicitArray: true,           // Mantém arrays como arrays
+            mergeAttrs: false,              // NÃO mescla atributos
+            explicitRoot: false,            // Remove root desnecessário
+            preserveChildrenOrder: false,   
+            xmlns: true,                    // Preserva xmlns
+            tagNameProcessors: [],          // NÃO processa nomes de tags (mantém namespace)
+            attrNameProcessors: [],         // NÃO processa atributos
           });
+          
+          const parsedXml = await parser.parseStringPromise(xmlText);
           responseData = parsedXml;
+          
+          console.log('✓ XML/SOAP parseado com NAMESPACES preservados');
         } catch (xmlParseError) {
+          console.error('Erro ao parsear XML:', xmlParseError.message);
           // Se falhar o parse, usa o XML como string
           responseData = xmlText;
         }
@@ -255,6 +263,7 @@ export const testEndpoint = async (req, res, next) => {
           },
         });
         console.log('  ✓ Salvo com sucesso!');
+        console.log('  ✓ Namespaces preservados:', JSON.stringify(responseData).includes(':'));
         savedExample = true;
       } catch (saveError) {
         console.error('  ✗ Erro ao salvar:', saveError.message);
