@@ -365,8 +365,9 @@ export const testEndpoint = async (req, res, next) => {
           console.log('✓ XML/SOAP parseado com NAMESPACES preservados');
         } catch (xmlParseError) {
           console.error('Erro ao parsear XML:', xmlParseError.message);
-          // Se falhar o parse, usa o XML como string
-          responseData = xmlText;
+          // Se falhar o parse, não salvar no JSONB (salva null)
+          responseData = null;
+          console.log('⚠️ XML não pôde ser parseado - response_example não será salvo');
         }
       } else {
         responseData = await response.text();
