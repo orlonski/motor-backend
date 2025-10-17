@@ -78,6 +78,7 @@ export const createEndpoint = async (req, res, next) => {
       url,
       headersTemplate,
       authenticationType,
+      typeResult,
     } = req.body;
 
     const endpoint = await prisma.apiEndpoint.create({
@@ -88,6 +89,7 @@ export const createEndpoint = async (req, res, next) => {
         url,
         headersTemplate: headersTemplate || {},
         authenticationType: authenticationType || 'None',
+        typeResult: typeResult || 'json',
       },
       include: {
         integration: {
@@ -115,6 +117,7 @@ export const updateEndpoint = async (req, res, next) => {
       url,
       headersTemplate,
       authenticationType,
+      typeResult,
     } = req.body;
 
     const endpoint = await prisma.apiEndpoint.update({
@@ -125,6 +128,7 @@ export const updateEndpoint = async (req, res, next) => {
         url,
         headersTemplate,
         authenticationType,
+        typeResult,
       },
       include: {
         integration: {
