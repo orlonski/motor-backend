@@ -42,7 +42,8 @@ model ApiEndpoint {
 
   requestType        String         @default("REST") @map("request_type") @db.VarChar(10)
   bodyTemplate       String?        @map("body_template") @db.Text
-  
+  typeResult         String         @default("json") @map("type_result") @db.VarChar(10) // Tipo do resultado: 'json' ou 'xml'
+
   // 🆕 NOVOS CAMPOS: Exemplos de estrutura para validação
   requestExample     Json?          @map("request_example") @db.JsonB  // Exemplo do payload de request
   responseExample    Json?          @map("response_example") @db.JsonB // Exemplo do payload de response (COMPLETO)
