@@ -173,6 +173,7 @@ export const generateMappedResponse = async (req, res, next) => {
         id: true,
         name: true,
         responseExample: true,
+        typeResult: true,
         _count: {
           select: { fieldMappings: true },
         },
@@ -229,10 +230,23 @@ export const generateMappedResponse = async (req, res, next) => {
         });
       }
 
-      mappedData = await n8nResponse.json();
-      console.log('  ✓ Resposta do n8n recebida');
-      console.log('  ✓ Tipo:', Array.isArray(mappedData) ? 'Array' : 'Object');
-      console.log('  ✓ Tamanho:', Array.isArray(mappedData) ? `${mappedData.length} items` : 'N/A');
+      // Detectar tipo de resposta baseado no Content-Type do n8n
+      const contentType = n8nResponse.headers.get('content-type') || '';
+
+      console.log('  ✓ Type Result do endpoint:', endpoint.typeResult);
+      console.log('  ✓ Content-Type da resposta n8n:', contentType);
+
+      // O n8n já retorna o formato correto (JSON ou XML) como string
+      // Salvamos exatamente como veio, sem parsear
+      mappedData = await n8nResponse.text();
+
+      console.log('  ✓ Resposta recebida do n8n');
+      console.log('  ✓ Tipo:', endpoint.typeResult);
+      console.log('  ✓ Tamanho do conteúdo:', mappedData.length, 'caracteres');
+
+      // Preview dos primeiros caracteres (para debug)
+      const preview = mappedData.substring(0, 100).replace(/\n/g, ' ');
+      console.log('  ✓ Preview:', preview + '...');
 
     } catch (fetchError) {
       console.error('  ✗ Erro ao conectar com n8n:', fetchError.message);
@@ -260,14 +274,15 @@ export const generateMappedResponse = async (req, res, next) => {
     }
 
     // Retornar sucesso
+    // Como mappedData agora é string (JSON ou XML), retornamos direto
     res.json({
       success: true,
       message: 'Mapped response gerado e salvo com sucesso',
-      mappedData,
+      mappedData, // String com JSON ou XML
       stats: {
         totalMappings: endpoint._count.fieldMappings,
-        resultType: Array.isArray(mappedData) ? 'array' : 'object',
-        resultCount: Array.isArray(mappedData) ? mappedData.length : null,
+        typeResult: endpoint.typeResult,
+        contentLength: mappedData.length,
       },
     });
 

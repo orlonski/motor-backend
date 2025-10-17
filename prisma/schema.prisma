@@ -47,7 +47,7 @@ model ApiEndpoint {
   // 🆕 NOVOS CAMPOS: Exemplos de estrutura para validação
   requestExample     Json?          @map("request_example") @db.JsonB  // Exemplo do payload de request
   responseExample    Json?          @map("response_example") @db.JsonB // Exemplo do payload de response (COMPLETO)
-  mappedResponseExample Json?       @map("mapped_response_example") @db.JsonB // Exemplo de response FILTRADO (apenas campos mapeados)
+  mappedResponseExample String?     @map("mapped_response_example") @db.Text // Exemplo de response FILTRADO (JSON ou XML como texto)
   
   // 🆕 NOVO: Metadados de detecção automática
   detectedScenario   String?        @map("detected_scenario") @db.VarChar(50) // 'simple_object', 'array_root', 'object_with_arrays'
