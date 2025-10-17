@@ -157,6 +157,121 @@ export const deleteEndpoint = async (req, res, next) => {
   }
 };
 
+// Gerar mapped response através do n8n
+export const generateMappedResponse = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Verificar se o endpoint existe
+    const endpoint = await prisma.apiEndpoint.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        responseExample: true,
+        _count: {
+          select: { fieldMappings: true },
+        },
+      },
+    });
+
+    if (!endpoint) {
+      return res.status(404).json({ error: 'Endpoint não encontrado' });
+    }
+
+    // Verificar se tem responseExample
+    if (!endpoint.responseExample) {
+      return res.status(400).json({
+        error: 'Nenhum exemplo de resposta disponível',
+        message: 'Execute um teste no endpoint primeiro para gerar o response_example',
+      });
+    }
+
+    // Verificar se tem field mappings
+    if (endpoint._count.fieldMappings === 0) {
+      return res.status(400).json({
+        error: 'Nenhum mapeamento de campo configurado',
+        message: 'Configure os field_mappings primeiro antes de gerar o mapped_response_example',
+      });
+    }
+
+    console.log('🔄 Chamando serviço n8n para gerar mapped response...');
+    console.log('  Endpoint ID:', id);
+
+    // Chamar o serviço n8n
+    let mappedData;
+    let n8nStatus;
+
+    try {
+      const n8nResponse = await fetch('https://orlonski-n8n.zj8v6e.easypanel.host/webhook/motor', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          endpoint_id: id,
+        }),
+      });
+
+      n8nStatus = n8nResponse.status;
+
+      if (!n8nResponse.ok) {
+        const errorText = await n8nResponse.text();
+        console.error('  ✗ Erro do n8n:', errorText);
+        return res.status(500).json({
+          error: 'Erro ao processar mapeamento no n8n',
+          details: errorText,
+          status: n8nStatus,
+        });
+      }
+
+      mappedData = await n8nResponse.json();
+      console.log('  ✓ Resposta do n8n recebida');
+      console.log('  ✓ Tipo:', Array.isArray(mappedData) ? 'Array' : 'Object');
+      console.log('  ✓ Tamanho:', Array.isArray(mappedData) ? `${mappedData.length} items` : 'N/A');
+
+    } catch (fetchError) {
+      console.error('  ✗ Erro ao conectar com n8n:', fetchError.message);
+      return res.status(500).json({
+        error: 'Erro ao conectar com o serviço de mapeamento (n8n)',
+        details: fetchError.message,
+      });
+    }
+
+    // Salvar o mapped response no banco
+    try {
+      await prisma.apiEndpoint.update({
+        where: { id },
+        data: {
+          mappedResponseExample: mappedData,
+        },
+      });
+      console.log('  ✓ mapped_response_example salvo no banco!');
+    } catch (saveError) {
+      console.error('  ✗ Erro ao salvar no banco:', saveError.message);
+      return res.status(500).json({
+        error: 'Erro ao salvar mapped_response_example no banco',
+        details: saveError.message,
+      });
+    }
+
+    // Retornar sucesso
+    res.json({
+      success: true,
+      message: 'Mapped response gerado e salvo com sucesso',
+      mappedData,
+      stats: {
+        totalMappings: endpoint._count.fieldMappings,
+        resultType: Array.isArray(mappedData) ? 'array' : 'object',
+        resultCount: Array.isArray(mappedData) ? mappedData.length : null,
+      },
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Testar endpoint e salvar exemplo de resposta
 export const testEndpoint = async (req, res, next) => {
   try {

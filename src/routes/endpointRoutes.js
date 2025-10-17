@@ -7,6 +7,7 @@ import {
   updateEndpoint,
   deleteEndpoint,
   testEndpoint,
+  generateMappedResponse,
 } from '../controllers/endpointController.js';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validator.js';
@@ -21,6 +22,9 @@ router.get('/:integrationId/endpoints', getEndpointsByIntegration);
 
 // POST /api/endpoints/:id/test - Testar endpoint
 router.post('/:id/test', testEndpoint);
+
+// POST /api/endpoints/:id/generate-mapped - Gerar mapped response via n8n
+router.post('/:id/generate-mapped', generateMappedResponse);
 
 // GET /api/endpoints/:id - Buscar endpoint específico
 router.get('/:id', getEndpointById);
